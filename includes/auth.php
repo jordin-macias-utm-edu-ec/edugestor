@@ -1,50 +1,55 @@
 <?php
 // auth.php
-require_once 'database.php';
-
-function login($email, $password) {
-    $conn = getConnection();
-    $email = $conn->real_escape_string($email);
-    
-    $sql = "SELECT id, email, password, nombre, rol FROM usuarios WHERE email = '$email' AND activo = 1";
-    $result = $conn->query($sql);
-    
-    if ($result->num_rows == 1) {
-        $user = $result->fetch_assoc();
-        // Verificar la contraseña (en el futuro, usaremos password_verify)
-        // Por ahora, asumimos que la contraseña es texto plano (lo cambiaremos luego)
-        if ($password == 'admin123' && $email == 'admin@edugestor.com') {
-            // Contraseña correcta
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['user_email'] = $user['email'];
-            $_SESSION['user_nombre'] = $user['nombre'];
-            $_SESSION['user_rol'] = $user['rol'];
-            return true;
-        } else {
-            // Contraseña incorrecta
-            return false;
-        }
-    } else {
-        // Usuario no encontrado
-        return false;
-    }
-}
-
-function isLoggedIn() {
-    return isset($_SESSION['user_id']);
-}
 
 function redirectIfNotLoggedIn() {
-    if (!isLoggedIn()) {
-        header('Location: ' . APP_URL . '/index.php');
+    if (!isset($_SESSION['user_id'])) {
+        header('Location: index.php');
         exit();
     }
 }
 
-function redirectIfNotAdmin() {
-    if ($_SESSION['user_rol'] != 'admin') {
-        header('Location: ' . APP_URL . '/user/dashboard.php');
+function redirectIfLoggedIn() {
+    if (isset($_SESSION['user_id'])) {
+        if ($_SESSION['user_rol'] == 'admin') {
+            header('Location: admin/index.php');
+        } else {
+            header('Location: user/dashboard.php');
+        }
         exit();
     }
+}
+
+function checkPassword($inputPassword, $hashedPassword) {
+    return password_verify($inputPassword, $hashedPassword);
+}
+
+function hashPassword($password) {
+    return password_hash($password, PASSWORD_DEFAULT);
+}
+
+function authenticate($email, $password) {
+    require_once 'database.php';
+    $conn = getConnection();
+    
+    $stmt = $conn->prepare("SELECT id, email, password, nombre, rol FROM usuarios WHERE email = ?");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($row = $result->fetch_assoc()) {
+        if (password_verify($password, $row['password'])) {
+            $_SESSION['user_id'] = $row['id'];
+            $_SESSION['user_email'] = $row['email'];
+            $_SESSION['user_nombre'] = $row['nombre'];
+            $_SESSION['user_rol'] = $row['rol'];
+            $stmt->close();
+            $conn->close();
+            return true;
+        }
+    }
+    
+    $stmt->close();
+    $conn->close();
+    return false;
 }
 ?>

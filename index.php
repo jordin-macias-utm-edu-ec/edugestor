@@ -2,22 +2,23 @@
 require_once 'includes/config.php';
 require_once 'includes/auth.php';
 
+redirectIfLoggedIn();
+
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
     
-    if (login($email, $password)) {
-        // Redirigir según el rol
+    if (authenticate($email, $password)) {
         if ($_SESSION['user_rol'] == 'admin') {
-            header('Location: ' . APP_URL . '/admin/index.php');
+            header('Location: admin/index.php');
         } else {
-            header('Location: ' . APP_URL . '/user/dashboard.php');
+            header('Location: user/dashboard.php');
         }
         exit();
     } else {
-        $error = 'Correo o contraseña incorrectos.';
+        $error = 'Credenciales incorrectas. Intenta nuevamente.';
     }
 }
 ?>
@@ -26,42 +27,59 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo APP_NAME; ?> - Login</title>
+    <title><?php echo APP_NAME; ?> - Sistema de Préstamos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        .password-input-group {
+            position: relative;
+        }
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #6c757d;
+        }
+    </style>
 </head>
-<body class="bg-light">
+<body>
     <div class="container mt-5">
         <div class="row justify-content-center">
             <div class="col-md-6">
                 <div class="card shadow">
-                    <div class="card-header bg-primary text-white text-center">
+                    <div class="card-header bg-primary text-white">
                         <h4 class="mb-0"><?php echo APP_NAME; ?></h4>
                         <small>Sistema de Gestión de Préstamos Académicos</small>
                     </div>
                     <div class="card-body">
-                        <h5 class="card-title text-center">Iniciar Sesión</h5>
-                        
+                        <h5 class="card-title">Iniciar Sesión</h5>
                         <?php if ($error): ?>
                             <div class="alert alert-danger"><?php echo $error; ?></div>
                         <?php endif; ?>
-                        
                         <form method="POST" action="">
                             <div class="mb-3">
                                 <label for="email" class="form-label">Correo Electrónico</label>
-                                <input type="email" class="form-control" id="email" name="email" 
-                                       value="admin@edugestor.com" required>
+                                <input type="email" class="form-control" id="email" name="email" required>
                             </div>
-                            <div class="mb-3">
+                            <div class="mb-3 password-input-group">
                                 <label for="password" class="form-label">Contraseña</label>
-                                <input type="password" class="form-control" id="password" name="password" 
-                                       value="admin123" required>
-                                <small class="text-muted">Usa: admin@edugestor.com / admin123</small>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                                <span class="password-toggle" id="togglePassword">
+                                    <i class="fas fa-eye"></i>
+                                </span>
                             </div>
                             <button type="submit" class="btn btn-primary w-100">Ingresar</button>
                         </form>
                         <hr>
                         <p class="text-center">¿No tienes cuenta? <a href="register.php">Regístrate aquí</a></p>
+                        <p class="text-center text-muted small">
+                            <strong>Credenciales de prueba:</strong><br>
+                            Admin: admin@edugestor.com / admin123<br>
+                            Usuario: jmacias8827@utm.edu.ec / usuario123
+                        </p>
                     </div>
                 </div>
             </div>
@@ -69,5 +87,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Mostrar/ocultar contraseña
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const icon = this.querySelector('i');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+    </script>
 </body>
 </html>

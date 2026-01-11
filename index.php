@@ -1,9 +1,5 @@
 <?php
-// En lugar de llamar a config.php y auth.php por separado...
-// require_once 'includes/config.php';
-// require_once 'includes/auth.php';
-
-// Usa init.php para asegurar que la sesión SIEMPRE se inicie
+// user/index.php o /index.php
 require_once 'includes/init.php';
 
 redirectIfLoggedIn();
@@ -11,7 +7,7 @@ redirectIfLoggedIn();
 $error = '';
 $success_message = '';
 
-// Mostrar mensaje de registro exitoso
+// Lógica original de mensajes de éxito
 if (isset($_GET['registro']) && $_GET['registro'] == 'exitoso') {
     $success_message = '¡Registro exitoso! Ahora puedes iniciar sesión.';
 } elseif (isset($_SESSION['registro_exitoso']) && $_SESSION['registro_exitoso']) {
@@ -19,6 +15,7 @@ if (isset($_GET['registro']) && $_GET['registro'] == 'exitoso') {
     $success_message = '¡Registro exitoso! Ahora puedes iniciar sesión.';
 }
 
+// Lógica original de autenticación
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
@@ -40,77 +37,202 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo APP_NAME; ?> - Sistema de Préstamos</title>
+    <title><?php echo APP_NAME; ?> - Iniciar Sesión</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
+    
     <style>
-        .password-input-group { position: relative; }
+        :root {
+            --primary-gradient: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            --glass-bg: rgba(255, 255, 255, 0.92);
+        }
+
+        body {
+            background: var(--primary-gradient);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 15px;
+        }
+
+        .login-card {
+            background: var(--glass-bg);
+            border: none;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-header {
+            background: rgba(13, 110, 253, 0.05);
+            padding: 30px 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .brand-logo {
+            font-size: 2.5rem;
+            color: #0d6efd;
+            margin-bottom: 10px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #444;
+            margin-left: 5px;
+        }
+
+        /* CORRECCIÓN DEL OJITO: Uso de input-group de Bootstrap para alineación perfecta */
+        .input-group-custom {
+            background: white;
+            border: 1px solid #ced4da;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .input-group-custom:focus-within {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15);
+        }
+
+        .input-group-custom .form-control {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 12px 15px;
+            background: transparent;
+        }
+
+        .input-group-icon {
+            padding-left: 15px;
+            color: #6c757d;
+        }
+
         .password-toggle {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
+            padding: 0 15px;
             cursor: pointer;
             color: #6c757d;
+            transition: color 0.2s;
+        }
+
+        .password-toggle:hover {
+            color: #0d6efd;
+        }
+
+        .btn-login {
+            border-radius: 12px;
+            padding: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            background: #0d6efd;
+            border: none;
+            transition: all 0.3s;
+        }
+
+        .btn-login:hover {
+            background: #0b5ed7;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(13, 110, 253, 0.3);
         }
     </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <div class="card shadow">
-                    <div class="card-header bg-primary text-white">
-                        <h4 class="mb-0"><?php echo APP_NAME; ?></h4>
-                        <small>Sistema de Gestión de Préstamos Académicos</small>
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title">Iniciar Sesión</h5>
-                        
-                        <?php if ($error): ?>
-                            <div class="alert alert-danger"><?php echo $error; ?></div>
-                        <?php endif; ?>
 
-                        <?php if ($success_message): ?>
-                            <div class="alert alert-success">
-                                <i class="fas fa-check-circle"></i> <?php echo $success_message; ?>
-                            </div>
-                        <?php endif; ?>
-
-                        <form method="POST" action="">
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Correo Electrónico</label>
-                                <input type="email" class="form-control" id="email" name="email" required>
-                            </div>
-                            <div class="mb-3 password-input-group">
-                                <label for="password" class="form-label">Contraseña</label>
-                                <input type="password" class="form-control" id="password" name="password" required>
-                                <span class="password-toggle" id="togglePassword">
-                                    <i class="fas fa-eye"></i>
-                                </span>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100">Ingresar</button>
-                        </form>
-                        <hr>
-                        <p class="text-center">¿No tienes cuenta? <a href="register.php">Regístrate aquí</a></p>
+    <div class="login-container">
+        <div class="card login-card">
+            <div class="login-header">
+                <div class="brand-logo">
+                    <i class="fas fa-tools"></i>
+                </div>
+                <h4 class="mb-0 fw-bold"><?php echo APP_NAME; ?></h4>
+                <p class="text-muted small mb-0">Gestión de Préstamos Académicos</p>
+            </div>
+            
+            <div class="card-body p-4">
+                <?php if ($error): ?>
+                    <div class="alert alert-danger py-2 small border-0 shadow-sm">
+                        <i class="fas fa-exclamation-circle me-2"></i><?php echo $error; ?>
                     </div>
+                <?php endif; ?>
+
+                <?php if ($success_message): ?>
+                    <div class="alert alert-success py-2 small border-0 shadow-sm">
+                        <i class="fas fa-check-circle me-2"></i><?php echo $success_message; ?>
+                    </div>
+                <?php endif; ?>
+
+                <form method="POST" action="">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Correo Electrónico</label>
+                        <div class="input-group-custom">
+                            <i class="fas fa-envelope input-group-icon"></i>
+                            <input type="email" class="form-control" id="email" name="email" placeholder="nombre@ejemplo.com" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="password" class="form-label">Contraseña</label>
+                        <div class="input-group-custom">
+                            <i class="fas fa-lock input-group-icon"></i>
+                            <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required>
+                            <div class="password-toggle" id="togglePassword">
+                                <i class="fas fa-eye"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 btn-login shadow-sm">
+                        Ingresar <i class="fas fa-sign-in-alt ms-2"></i>
+                    </button>
+                </form>
+
+                <div class="text-center mt-4">
+                    <p class="mb-0 small text-muted">¿No tienes cuenta? 
+                        <a href="register.php" class="text-primary fw-bold text-decoration-none">Regístrate aquí</a>
+                    </p>
                 </div>
             </div>
         </div>
+        
+        <p class="text-center text-white-50 mt-4 small">
+            &copy; <?php echo date('Y'); ?> <?php echo APP_NAME; ?> v1.0
+        </p>
     </div>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Lógica del ojito mejorada para el nuevo diseño
         document.getElementById('togglePassword').addEventListener('click', function() {
             const passwordInput = document.getElementById('password');
             const icon = this.querySelector('i');
+            
             if (passwordInput.type === 'password') {
                 passwordInput.type = 'text';
-                icon.classList.replace('fa-eye', 'fa-eye-slash');
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
             } else {
                 passwordInput.type = 'password';
-                icon.classList.replace('fa-eye-slash', 'fa-eye');
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
             }
         });
     </script>

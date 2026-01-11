@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['crear'])) {
     $codigo = $conn->real_escape_string($_POST['codigo']);
     $nombre = $conn->real_escape_string($_POST['nombre']);
     $descripcion = $conn->real_escape_string($_POST['descripcion']);
-    // Tomamos la categoría del select o del campo "Nueva"
+    // categoría del select o del campo "Nueva"
     $categoria = !empty($_POST['nueva_categoria']) ? $_POST['nueva_categoria'] : $_POST['categoria'];
     $categoria = $conn->real_escape_string($categoria);
     

@@ -4,7 +4,6 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 // __DIR__ es la carpeta 'includes'. 
-// '/../' sube un nivel a 'edugestor' y luego entra a 'libs'
 require __DIR__ . '/../libs/PHPMailer/Exception.php';
 require __DIR__ . '/../libs/PHPMailer/PHPMailer.php';
 require __DIR__ . '/../libs/PHPMailer/SMTP.php';
@@ -18,10 +17,10 @@ function enviarCorreoNotificacion($destinatario, $nombreUsuario, $asunto, $cuerp
         $mail->Host       = 'smtp.gmail.com'; 
         $mail->SMTPAuth   = true;
         
-        // AQUÍ PONES TU CORREO DE GMAIL
+        // CORREO DE GMAIL
         $mail->Username   = 'jordin1517@gmail.com'; 
         
-        // AQUÍ PEGAS LA CLAVE DE 16 LETRAS (SIN ESPACIOS)
+        // CLAVE DE 16 LETRAS
         $mail->Password   = 'cpgk ndim lhyh rvwm'; 
         
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;

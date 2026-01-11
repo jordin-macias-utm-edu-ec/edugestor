@@ -60,7 +60,7 @@ if (isset($_GET['accion']) && isset($_GET['id'])) {
                 $nombre = $datos['usuario_nombre'];
                 $equipo = $datos['equipo_nombre'];
 
-                // Personalizamos el mensaje según la acción
+                // Mensaje según la acción
                 if ($accion == 'aprobar') {
                     $asunto = "¡Préstamo Aprobado! - " . APP_NAME;
                     $mensaje_body = "Hola $nombre, tu solicitud para el recurso <b>$equipo</b> ha sido <b>APROBADA</b>. Ya puedes pasar a recogerlo.";
@@ -69,7 +69,7 @@ if (isset($_GET['accion']) && isset($_GET['id'])) {
                     $mensaje_body = "Hola $nombre, lamentamos informarte que tu solicitud para el recurso <b>$equipo</b> ha sido <b>RECHAZADA</b>.";
                 }
 
-                // Solo enviamos correo si es aprobar o rechazar (en completar no suele ser necesario)
+                // Solo enviamos un correo si es aprobar o rechazar 
                 if ($accion != 'completar') {
                     enviarCorreoNotificacion($destinatario, $nombre, $asunto, $mensaje_body);
                 }

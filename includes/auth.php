@@ -29,7 +29,7 @@ function hashPassword($password) {
 }
 
 function authenticate($email, $password) {
-    // Ya no necesitamos require_once aquí porque init.php lo carga todo
+   
     $conn = getConnection();
     
     $stmt = $conn->prepare("SELECT id, email, password, nombre, rol FROM usuarios WHERE email = ?");

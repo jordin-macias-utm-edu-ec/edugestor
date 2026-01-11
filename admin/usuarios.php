@@ -6,7 +6,7 @@ if ($_SESSION['user_rol'] != 'admin') { header('Location: ../user/dashboard.php'
 
 $conn = getConnection();
 
-// --- 1. EXPORTAR CSV (DEBE IR ANTES DE CUALQUIER HTML) ---
+// --- 1. EXPORTAR CSV  ---
 if (isset($_GET['exportar']) && $_GET['exportar'] == 'csv') {
     ob_end_clean(); // Limpiar el búfer para que el CSV sea puro
     header('Content-Type: text/csv; charset=utf-8');

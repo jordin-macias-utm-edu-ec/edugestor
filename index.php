@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             margin-left: 5px;
         }
 
-        /* CORRECCIÓN DEL OJITO: Uso de input-group de Bootstrap para alineación perfecta */
+        /* Uso de input-group de Bootstrap  */
         .input-group-custom {
             background: white;
             border: 1px solid #ced4da;
@@ -222,7 +222,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Lógica del ojito mejorada para el nuevo diseño
+        // Lógica visualización de contraseña
         document.getElementById('togglePassword').addEventListener('click', function() {
             const passwordInput = document.getElementById('password');
             const icon = this.querySelector('i');

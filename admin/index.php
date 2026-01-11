@@ -24,42 +24,7 @@ $conn = getConnection();
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
-                <div class="position-sticky pt-3">
-                    <h4 class="text-white text-center mb-4">
-                        <i class="fas fa-tools"></i> <?php echo APP_NAME; ?>
-                    </h4>
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link active" href="index.php">
-                                <i class="fas fa-tachometer-alt"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="equipos.php">
-                                <i class="fas fa-laptop"></i> Equipos
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="prestamos.php">
-                                <i class="fas fa-exchange-alt"></i> Préstamos
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="usuarios.php">
-                                <i class="fas fa-users"></i> Usuarios
-                            </a>
-                        </li>
-                        <hr class="bg-light">
-                        <li class="nav-item">
-                            <a class="nav-link" href="../logout.php">
-                                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
-
+            <?php include 'includes/sidebar.php'; ?>
             <!-- Main content -->
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                 <!-- Navbar superior -->

@@ -51,3 +51,41 @@ body {
 .stat-card.mantenimiento {
     border-left-color: #ffc107;
 }
+
+.alert-success {
+    animation: fadeInUp 0.5s ease;
+    border-left: 5px solid #28a745;
+}
+
+.alert-danger {
+    animation: fadeInUp 0.5s ease;
+    border-left: 5px solid #dc3545;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* Estilo para los badges de estado */
+
+.badge {
+    font-size: 0.8em;
+    padding: 5px 10px;
+}
+
+
+/* Mejorar el sidebar activo */
+
+.sidebar .nav-link.active {
+    background-color: #2980b9;
+    transform: translateX(5px);
+    transition: all 0.3s ease;
+}

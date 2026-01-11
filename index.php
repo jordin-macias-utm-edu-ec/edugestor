@@ -1,10 +1,23 @@
 <?php
-require_once 'includes/config.php';
-require_once 'includes/auth.php';
+// En lugar de llamar a config.php y auth.php por separado...
+// require_once 'includes/config.php';
+// require_once 'includes/auth.php';
+
+// Usa init.php para asegurar que la sesión SIEMPRE se inicie
+require_once 'includes/init.php';
 
 redirectIfLoggedIn();
 
 $error = '';
+$success_message = '';
+
+// Mostrar mensaje de registro exitoso
+if (isset($_GET['registro']) && $_GET['registro'] == 'exitoso') {
+    $success_message = '¡Registro exitoso! Ahora puedes iniciar sesión.';
+} elseif (isset($_SESSION['registro_exitoso']) && $_SESSION['registro_exitoso']) {
+    unset($_SESSION['registro_exitoso']);
+    $success_message = '¡Registro exitoso! Ahora puedes iniciar sesión.';
+}
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'] ?? '';
@@ -32,9 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
     <style>
-        .password-input-group {
-            position: relative;
-        }
+        .password-input-group { position: relative; }
         .password-toggle {
             position: absolute;
             right: 10px;
@@ -56,9 +67,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </div>
                     <div class="card-body">
                         <h5 class="card-title">Iniciar Sesión</h5>
+                        
                         <?php if ($error): ?>
                             <div class="alert alert-danger"><?php echo $error; ?></div>
                         <?php endif; ?>
+
+                        <?php if ($success_message): ?>
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle"></i> <?php echo $success_message; ?>
+                            </div>
+                        <?php endif; ?>
+
                         <form method="POST" action="">
                             <div class="mb-3">
                                 <label for="email" class="form-label">Correo Electrónico</label>
@@ -75,11 +94,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         </form>
                         <hr>
                         <p class="text-center">¿No tienes cuenta? <a href="register.php">Regístrate aquí</a></p>
-                        <p class="text-center text-muted small">
-                            <strong>Credenciales de prueba:</strong><br>
-                            Admin: admin@edugestor.com / admin123<br>
-                            Usuario: jmacias8827@utm.edu.ec / usuario123
-                        </p>
                     </div>
                 </div>
             </div>
@@ -88,18 +102,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Mostrar/ocultar contraseña
         document.getElementById('togglePassword').addEventListener('click', function() {
             const passwordInput = document.getElementById('password');
             const icon = this.querySelector('i');
             if (passwordInput.type === 'password') {
                 passwordInput.type = 'text';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
             } else {
                 passwordInput.type = 'password';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
             }
         });
     </script>

@@ -89,3 +89,13 @@ body {
     transform: translateX(5px);
     transition: all 0.3s ease;
 }
+
+.modal-backdrop {
+    z-index: 1040 !important;
+}
+
+.modal {
+    z-index: 1050 !important;
+    background: rgba(0, 0, 0, 0.5);
+    /* Ayuda a estabilizar la vista */
+}

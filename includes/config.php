@@ -7,5 +7,4 @@ define('DB_NAME', 'edugestor');
 define('BASE_URL', 'http://localhost/edugestor/');
 
 define('APP_NAME', 'EduGestor');
-define('APP_URL', 'http://localhost/edugestor');
 ?>

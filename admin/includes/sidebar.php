@@ -16,6 +16,7 @@
                 <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'equipos.php' ? 'active' : ''; ?>" href="equipos.php">
                     <i class="fas fa-laptop"></i> Equipos
                 </a>
+            </li>
             <li class="nav-item">
                 <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'prestamos.php' ? 'active' : ''; ?>" href="prestamos.php">
                     <i class="fas fa-exchange-alt"></i> Préstamos

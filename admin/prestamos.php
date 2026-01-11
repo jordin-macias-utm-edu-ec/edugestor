@@ -37,25 +37,52 @@ if (isset($_GET['accion']) && isset($_GET['id'])) {
         $estado_nuevo = ($accion == 'aprobar') ? 'aprobado' : 
                         (($accion == 'rechazar') ? 'rechazado' : 'completado');
         
-        if ($accion == 'aprobar') {
-            $res = $conn->query("SELECT equipo_id FROM prestamos WHERE id = $id");
-            if ($p = $res->fetch_assoc()) {
-                $conn->query("UPDATE equipos SET estado = 'prestado' WHERE id = " . $p['equipo_id']);
-            }
-        } elseif ($accion == 'completar') {
-            $res = $conn->query("SELECT equipo_id FROM prestamos WHERE id = $id");
-            if ($p = $res->fetch_assoc()) {
-                $conn->query("UPDATE equipos SET estado = 'disponible' WHERE id = " . $p['equipo_id']);
-            }
-        }
+        // Primero actualizamos el estado en la base de datos
+        $stmt = $conn->prepare("UPDATE prestamos SET estado = ? WHERE id = ?");
+        $stmt->bind_param("si", $estado_nuevo, $id);
 
-        if ($conn->query("UPDATE prestamos SET estado = '$estado_nuevo' WHERE id = $id")) {
-            $mensaje = "El préstamo #$id ha sido " . $estado_nuevo . " correctamente.";
+        if ($stmt->execute()) {
+            // Si la actualización fue exitosa, buscamos datos para enviar el correo
+            $info_sql = "SELECT u.email, u.nombre as usuario_nombre, e.nombre as equipo_nombre 
+                         FROM prestamos p 
+                         JOIN usuarios u ON p.usuario_id = u.id 
+                         JOIN equipos e ON p.equipo_id = e.id 
+                         WHERE p.id = ?";
+            
+            $stmt_info = $conn->prepare($info_sql);
+            $stmt_info->bind_param("i", $id);
+            $stmt_info->execute();
+            $resultado = $stmt_info->get_result();
+            $datos = $resultado->fetch_assoc();
+
+            if ($datos) {
+                $destinatario = $datos['email'];
+                $nombre = $datos['usuario_nombre'];
+                $equipo = $datos['equipo_nombre'];
+
+                // Personalizamos el mensaje según la acción
+                if ($accion == 'aprobar') {
+                    $asunto = "¡Préstamo Aprobado! - " . APP_NAME;
+                    $mensaje_body = "Hola $nombre, tu solicitud para el recurso <b>$equipo</b> ha sido <b>APROBADA</b>. Ya puedes pasar a recogerlo.";
+                } elseif ($accion == 'rechazar') {
+                    $asunto = "Actualización de tu solicitud - " . APP_NAME;
+                    $mensaje_body = "Hola $nombre, lamentamos informarte que tu solicitud para el recurso <b>$equipo</b> ha sido <b>RECHAZADA</b>.";
+                }
+
+                // Solo enviamos correo si es aprobar o rechazar (en completar no suele ser necesario)
+                if ($accion != 'completar') {
+                    enviarCorreoNotificacion($destinatario, $nombre, $asunto, $mensaje_body);
+                }
+            }
+            $mensaje = "El estado se actualizó correctamente.";
+        } else {
+            $error = "Error al actualizar el estado.";
         }
+        $stmt->close();
     }
 }
 
-// Obtener préstamos
+// Obtener préstamos para la tabla
 $sql = "SELECT p.*, e.nombre as equipo_nombre, e.codigo as equipo_codigo, e.categoria, u.nombre as usuario_nombre, u.email as usuario_email 
         FROM prestamos p 
         JOIN equipos e ON p.equipo_id = e.id 

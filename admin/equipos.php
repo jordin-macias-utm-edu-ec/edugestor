@@ -14,74 +14,50 @@ $error = '';
 
 // 1. Procesar creación de equipo (POST)
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['crear'])) {
-    $codigo = $_POST['codigo'] ?? '';
-    $nombre = $_POST['nombre'] ?? '';
-    $descripcion = $_POST['descripcion'] ?? '';
-    $categoria = $_POST['categoria'] ?? '';
-    $estado = $_POST['estado'] ?? '';
-    $ubicacion = $_POST['ubicacion'] ?? '';
+    $codigo = $conn->real_escape_string($_POST['codigo']);
+    $nombre = $conn->real_escape_string($_POST['nombre']);
+    $descripcion = $conn->real_escape_string($_POST['descripcion']);
+    // Tomamos la categoría del select o del campo "Nueva"
+    $categoria = !empty($_POST['nueva_categoria']) ? $_POST['nueva_categoria'] : $_POST['categoria'];
+    $categoria = $conn->real_escape_string($categoria);
+    
+    $estado = $conn->real_escape_string($_POST['estado']);
+    $ubicacion = $conn->real_escape_string($_POST['ubicacion']);
 
-    // Validar campos obligatorios
-    if (empty($codigo) || empty($nombre) || empty($categoria) || empty($estado)) {
-        $error = "Por favor, completa todos los campos obligatorios.";
+    if (empty($codigo) || empty($nombre) || empty($categoria)) {
+        $error = "Por favor, completa los campos obligatorios.";
     } else {
-        // Verificar si el código ya existe
-        $stmt_check = $conn->prepare("SELECT id FROM equipos WHERE codigo = ?");
-        $stmt_check->bind_param("s", $codigo);
-        $stmt_check->execute();
-        $stmt_check->store_result();
-
-        if ($stmt_check->num_rows > 0) {
-            $error = "El código '$codigo' ya está en uso. Por favor, elige otro.";
-            $stmt_check->close();
+        $check = $conn->query("SELECT id FROM equipos WHERE codigo = '$codigo'");
+        if ($check->num_rows > 0) {
+            $error = "El código '$codigo' ya existe.";
         } else {
-            $stmt_check->close();
-            // Insertar el nuevo equipo
-            $stmt = $conn->prepare("INSERT INTO equipos (codigo, nombre, descripcion, categoria, estado, ubicacion) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssss", $codigo, $nombre, $descripcion, $categoria, $estado, $ubicacion);
-
-            if ($stmt->execute()) {
-                $mensaje = "Equipo creado exitosamente.";
+            $sql = "INSERT INTO equipos (codigo, nombre, descripcion, categoria, estado, ubicacion) 
+                    VALUES ('$codigo', '$nombre', '$descripcion', '$categoria', '$estado', '$ubicacion')";
+            if ($conn->query($sql)) {
+                $mensaje = "Equipo registrado correctamente.";
             } else {
-                $error = "Error al crear el equipo: " . $conn->error;
+                $error = "Error al guardar.";
             }
-            $stmt->close();
         }
     }
 }
 
-// 2. Procesar eliminación (GET)
-if (isset($_GET['eliminar']) && is_numeric($_GET['eliminar'])) {
+// 2. Procesar eliminación
+if (isset($_GET['eliminar'])) {
     $id = intval($_GET['eliminar']);
-
-    // Verificar que el equipo exista
-    $stmt_check = $conn->prepare("SELECT id FROM equipos WHERE id = ?");
-    $stmt_check->bind_param("i", $id);
-    $stmt_check->execute();
-    $stmt_check->store_result();
-
-    if ($stmt_check->num_rows > 0) {
-        $stmt_check->close();
-        $stmt = $conn->prepare("DELETE FROM equipos WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        if ($stmt->execute()) {
-            $mensaje = "Equipo eliminado exitosamente.";
-        } else {
-            $error = "Error al eliminar el equipo.";
-        }
-        $stmt->close();
-    } else {
-        $error = "El equipo que intentas eliminar no existe.";
-        $stmt_check->close();
-    }
+    $conn->query("DELETE FROM equipos WHERE id = $id");
+    header("Location: equipos.php?mensaje=" . urlencode("Equipo eliminado"));
+    exit();
 }
 
-// 3. Mostrar mensaje de edición (si viene en la URL)
-if (isset($_GET['mensaje'])) {
-    $mensaje = urldecode($_GET['mensaje']);
-}
+if (isset($_GET['mensaje'])) { $mensaje = urldecode($_GET['mensaje']); }
 
-// Obtener la lista de equipos para mostrar
+// Obtener categorías únicas para el buscador y el formulario
+$res_cats = $conn->query("SELECT DISTINCT categoria FROM equipos ORDER BY categoria ASC");
+$categorias_existentes = [];
+while($cat = $res_cats->fetch_assoc()) { $categorias_existentes[] = $cat['categoria']; }
+
+// Obtener lista de equipos
 $result = $conn->query("SELECT * FROM equipos ORDER BY id DESC");
 ?>
 
@@ -90,163 +66,133 @@ $result = $conn->query("SELECT * FROM equipos ORDER BY id DESC");
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Equipos - <?php echo APP_NAME; ?></title>
+    <title>Inventario de Equipos - EduGestor</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/style.css">
+    <style>
+        body { background-color: #f4f7f6; }
+        .main-wrapper { display: flex; min-height: 100vh; }
+        .content-area { flex-grow: 1; padding: 20px; overflow-x: hidden; }
+        .page-header { background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .card-custom { border: none; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .badge-cat { text-transform: uppercase; font-size: 0.7rem; }
+    </style>
 </head>
 <body>
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <?php include 'includes/sidebar.php'; ?>
 
-            <!-- Contenido principal -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                    <h1 class="h2"><i class="fas fa-laptop"></i> Gestión de Equipos</h1>
+<div class="main-wrapper">
+    <?php include 'includes/sidebar.php'; ?>
+
+    <div class="content-area">
+        <div class="page-header">
+            <h2 class="mb-0"><i class="fas fa-boxes text-primary"></i> Inventario de Equipos</h2>
+            <button class="btn btn-primary" data-bs-toggle="collapse" data-bs-target="#formNuevoEquipo">
+                <i class="fas fa-plus"></i> Nuevo Equipo
+            </button>
+        </div>
+
+        <?php if ($mensaje): ?>
+            <div class="alert alert-success alert-dismissible fade show"><?php echo $mensaje; ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        <?php endif; ?>
+
+        <div class="collapse mb-4" id="formNuevoEquipo">
+            <div class="card card-custom">
+                <div class="card-body">
+                    <form method="POST" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Código</label>
+                            <input type="text" name="codigo" class="form-control" placeholder="Ej: LAP-001" required>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold">Nombre del Equipo</label>
+                            <input type="text" name="nombre" class="form-control" placeholder="Nombre descriptivo" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Categoría</label>
+                            <div class="input-group">
+                                <select name="categoria" class="form-select">
+                                    <option value="">-- Seleccionar --</option>
+                                    <?php foreach($categorias_existentes as $c): ?>
+                                        <option value="<?php echo $c; ?>"><?php echo ucfirst($c); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <input type="text" name="nueva_categoria" class="form-control" placeholder="O escribir nueva...">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Estado Inicial</label>
+                            <select name="estado" class="form-select">
+                                <option value="disponible">Disponible</option>
+                                <option value="mantenimiento">Mantenimiento</option>
+                                <option value="dañado">Dañado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Ubicación / Aula</label>
+                            <input type="text" name="ubicacion" class="form-control" placeholder="Ej: Laboratorio 1">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold">Descripción Corta</label>
+                            <input type="text" name="descripcion" class="form-control">
+                        </div>
+                        <div class="col-12 text-end">
+                            <button type="submit" name="crear" class="btn btn-success px-4"><i class="fas fa-save"></i> Registrar Equipo</button>
+                        </div>
+                    </form>
                 </div>
+            </div>
+        </div>
 
-                <!-- Mostrar mensajes -->
-                <?php if ($mensaje): ?>
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <?php echo $mensaje; ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                <?php endif; ?>
-
-                <?php if ($error): ?>
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <?php echo $error; ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                <?php endif; ?>
-
-                <!-- Formulario para agregar equipo -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="fas fa-plus-circle"></i> Agregar Nuevo Equipo</h5>
-                    </div>
-                    <div class="card-body">
-                        <form method="POST" action="">
-                            <div class="row">
-                                <div class="col-md-3 mb-3">
-                                    <label for="codigo" class="form-label">Código *</label>
-                                    <input type="text" class="form-control" id="codigo" name="codigo" required>
+        <div class="card card-custom overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Código</th>
+                            <th>Recurso / Nombre</th>
+                            <th>Categoría</th>
+                            <th>Estado</th>
+                            <th>Ubicación</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php while($e = $result->fetch_assoc()): ?>
+                        <tr>
+                            <td class="ps-4 fw-bold text-primary"><?php echo $e['codigo']; ?></td>
+                            <td>
+                                <div class="fw-bold"><?php echo htmlspecialchars($e['nombre']); ?></div>
+                                <div class="small text-muted"><?php echo htmlspecialchars($e['descripcion']); ?></div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border badge-cat">
+                                    <?php echo $e['categoria']; ?>
+                                </span>
+                            </td>
+                            <td>
+                                <?php 
+                                $badge = ['disponible'=>'bg-success', 'prestado'=>'bg-danger', 'mantenimiento'=>'bg-warning', 'dañado'=>'bg-dark'];
+                                $color = $badge[$e['estado']] ?? 'bg-secondary';
+                                ?>
+                                <span class="badge <?php echo $color; ?>"><?php echo ucfirst($e['estado']); ?></span>
+                            </td>
+                            <td><i class="fas fa-map-marker-alt text-muted me-1"></i> <?php echo $e['ubicacion']; ?></td>
+                            <td class="text-center">
+                                <div class="btn-group">
+                                    <a href="editar_equipo.php?id=<?php echo $e['id']; ?>" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
+                                    <a href="?eliminar=<?php echo $e['id']; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Eliminar equipo?')"><i class="fas fa-trash"></i></a>
                                 </div>
-                                <div class="col-md-5 mb-3">
-                                    <label for="nombre" class="form-label">Nombre *</label>
-                                    <input type="text" class="form-control" id="nombre" name="nombre" required>
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="categoria" class="form-label">Categoría *</label>
-                                    <select class="form-select" id="categoria" name="categoria" required>
-                                        <option value="audiovisual">Audiovisual</option>
-                                        <option value="computacion">Computación</option>
-                                        <option value="laboratorio">Laboratorio</option>
-                                        <option value="otros">Otros</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="descripcion" class="form-label">Descripción</label>
-                                    <textarea class="form-control" id="descripcion" name="descripcion" rows="2"></textarea>
-                                </div>
-                                <div class="col-md-3 mb-3">
-                                    <label for="estado" class="form-label">Estado *</label>
-                                    <select class="form-select" id="estado" name="estado" required>
-                                        <option value="disponible">Disponible</option>
-                                        <option value="mantenimiento">En Mantenimiento</option>
-                                        <option value="dañado">Dañado</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3 mb-3">
-                                    <label for="ubicacion" class="form-label">Ubicación</label>
-                                    <input type="text" class="form-control" id="ubicacion" name="ubicacion">
-                                </div>
-                            </div>
-                            <button type="submit" name="crear" class="btn btn-primary">
-                                <i class="fas fa-save"></i> Guardar Equipo
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Lista de equipos -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="fas fa-list"></i> Lista de Equipos (<?php echo $result->num_rows; ?>)</h5>
-                    </div>
-                    <div class="card-body">
-                        <?php if ($result->num_rows > 0): ?>
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Código</th>
-                                            <th>Nombre</th>
-                                            <th>Categoría</th>
-                                            <th>Estado</th>
-                                            <th>Ubicación</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php while($equipo = $result->fetch_assoc()): ?>
-                                        <tr>
-                                            <td><strong><?php echo htmlspecialchars($equipo['codigo']); ?></strong></td>
-                                            <td><?php echo htmlspecialchars($equipo['nombre']); ?></td>
-                                            <td>
-                                                <?php 
-                                                $categorias = [
-                                                    'audiovisual' => '<span class="badge bg-info">Audiovisual</span>',
-                                                    'computacion' => '<span class="badge bg-primary">Computación</span>',
-                                                    'laboratorio' => '<span class="badge bg-warning">Laboratorio</span>',
-                                                    'otros' => '<span class="badge bg-secondary">Otros</span>'
-                                                ];
-                                                echo $categorias[$equipo['categoria']] ?? $categorias['otros'];
-                                                ?>
-                                            </td>
-                                            <td>
-                                                <?php 
-                                                $estados = [
-                                                    'disponible' => '<span class="badge bg-success">Disponible</span>',
-                                                    'prestado' => '<span class="badge bg-danger">Prestado</span>',
-                                                    'mantenimiento' => '<span class="badge bg-warning">Mantenimiento</span>',
-                                                    'dañado' => '<span class="badge bg-dark">Dañado</span>'
-                                                ];
-                                                echo $estados[$equipo['estado']] ?? $estados['disponible'];
-                                                ?>
-                                            </td>
-                                            <td><?php echo htmlspecialchars($equipo['ubicacion']); ?></td>
-                                            <td>
-                                                <a href="editar_equipo.php?id=<?php echo $equipo['id']; ?>" class="btn btn-sm btn-outline-primary">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <a href="equipos.php?eliminar=<?php echo $equipo['id']; ?>" 
-                                                   class="btn btn-sm btn-outline-danger"
-                                                   onclick="return confirm('¿Estás seguro de eliminar este equipo?')">
-                                                    <i class="fas fa-trash"></i>
-                                                </a>
-                                            </td>
-                                        </tr>
-                                        <?php endwhile; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        <?php else: ?>
-                            <div class="alert alert-info">
-                                No hay equipos registrados. Agrega el primero usando el formulario superior.
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </main>
+                            </td>
+                        </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-<?php $conn->close(); ?>
+Audiovisual 

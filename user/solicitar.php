@@ -1,41 +1,36 @@
 <?php
-// user/solicitar.php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+
 require_once '../includes/init.php';
 redirectIfNotLoggedIn();
 
 $conn = getConnection();
 
-/**
- * NOTA: Esta función se podría mover a includes/functions.php 
- * para ser 100% reutilizable en todo el sitio.
- */
-function getCategoryStyle($categoria) {
-    switch ($categoria) {
-        case 'Tecnología':
-            return ['icon' => 'fa-laptop', 'color' => 'text-primary', 'bg' => 'bg-primary-subtle'];
-        case 'Laboratorio':
-            return ['icon' => 'fa-flask', 'color' => 'text-success', 'bg' => 'bg-success-subtle'];
-        case 'Espacios':
-            return ['icon' => 'fa-building', 'color' => 'text-info', 'bg' => 'bg-info-subtle'];
-        default:
-            return ['icon' => 'fa-box', 'color' => 'text-secondary', 'bg' => 'bg-light'];
-    }
-}
+// 1. MEJORA: Capturar equipo_id por URL (si el usuario viene desde el botón "Reservar" del Dashboard)
+$equipo_preseleccionado = isset($_GET['equipo_id']) ? intval($_GET['equipo_id']) : 0;
 
-// Obtener equipos disponibles
+
+
 $equipos_result = $conn->query("SELECT * FROM equipos WHERE estado = 'disponible' ORDER BY categoria, nombre");
 
-// Procesar solicitud
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['solicitar'])) {
     $equipo_id = intval($_POST['equipo_id']);
-    $fecha_inicio = $_POST['fecha_inicio']; 
-    $fecha_fin = $_POST['fecha_fin'];
-    $proposito = trim($_POST['proposito']);
-    $hoy = date('Y-m-d H:i');
     
-    if ($fecha_inicio < $hoy) {
+    // CORRECCIÓN: Normalizar el formato de fecha (HTML usa 'T' entre fecha y hora, MySQL prefiere espacio)
+    $fecha_inicio = str_replace('T', ' ', $_POST['fecha_inicio']);
+    $fecha_fin = str_replace('T', ' ', $_POST['fecha_fin']);
+    $proposito = trim($_POST['proposito']);
+    
+    // CORRECCIÓN: Comparación de fechas robusta usando timestamps
+    $ts_inicio = strtotime($fecha_inicio);
+    $ts_fin = strtotime($fecha_fin);
+    $ts_hoy = time();
+
+    if ($ts_inicio < ($ts_hoy - 60)) { // Margen de 1 min por retraso de servidor
         setFlash('error', "La fecha de inicio no puede ser anterior a la actual.");
-    } elseif ($fecha_fin <= $fecha_inicio) {
+    } elseif ($ts_fin <= $ts_inicio) {
         setFlash('error', "La fecha de entrega debe ser posterior al inicio.");
     } else {
         $stmt_check = $conn->prepare("SELECT estado FROM equipos WHERE id = ?");
@@ -48,37 +43,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['solicitar'])) {
         if ($estado_equipo != 'disponible') {
             setFlash('error', "El recurso seleccionado ya no está disponible.");
         } else {
-            $user_id = $_SESSION['user_id'];
-            $stmt = $conn->prepare("INSERT INTO prestamos (usuario_id, equipo_id, fecha_inicio, fecha_fin, proposito, estado) VALUES (?, ?, ?, ?, ?, 'pendiente')");
-            $stmt->bind_param("iisss", $user_id, $equipo_id, $fecha_inicio, $fecha_fin, $proposito);
-            
-            if ($stmt->execute()) {
-                // Preparar correo
-                $asunto = "Confirmación: Solicitud de reserva recibida";
-                $cuerpo = "
-                <html>
-                <body style='font-family: sans-serif;'>
-                    <h2 style='color: #0d6efd;'>Hola " . htmlspecialchars($_SESSION['user_nombre']) . ",</h2>
-                    <p>Tu solicitud de préstamo ha sido registrada exitosamente.</p>
-                    <ul>
-                        <li><strong>Recurso ID:</strong> $equipo_id</li>
-                        <li><strong>Inicio:</strong> $fecha_inicio</li>
-                        <li><strong>Entrega:</strong> $fecha_fin</li>
-                    </ul>
-                    <p>Te notificaremos cuando el administrador revise tu solicitud.</p>
-                </body>
-                </html>";
+            // VERIFICACIÓN: Asegurar que existan los datos de sesión antes de insertar
+            $user_id = $_SESSION['user_id'] ?? null;
+            $user_email = $_SESSION['user_email'] ?? null;
+            $user_nombre = $_SESSION['user_nombre'] ?? 'Usuario';
 
-                enviarCorreoNotificacion($_SESSION['user_email'], $_SESSION['user_nombre'], $asunto, $cuerpo);
-                
-                // Éxito: Guardamos mensaje y redirigimos al historial
-                setFlash('success', "¡Solicitud enviada! El administrador la revisará pronto.");
-                header("Location: historial.php"); 
-                exit();
+            if (!$user_id) {
+                setFlash('error', "Sesión inválida. Por favor, reingresa.");
             } else {
-                setFlash('error', "Error en la base de datos: " . $conn->error);
+                $stmt = $conn->prepare("INSERT INTO prestamos (usuario_id, equipo_id, fecha_inicio, fecha_fin, proposito, estado) VALUES (?, ?, ?, ?, ?, 'pendiente')");
+                $stmt->bind_param("iisss", $user_id, $equipo_id, $fecha_inicio, $fecha_fin, $proposito);
+                
+                if ($stmt->execute()) {
+                    // Solo intentar enviar correo si existe el email en la sesión
+                    if ($user_email) {
+                        $asunto = "Confirmación: Solicitud de reserva recibida";
+                        $cuerpo = "<html><body style='font-family: sans-serif;'>
+                            <h2 style='color: #0d6efd;'>Hola " . htmlspecialchars($user_nombre) . ",</h2>
+                            <p>Tu solicitud de préstamo ha sido registrada exitosamente.</p>
+                            <ul>
+                                <li><strong>Recurso ID:</strong> $equipo_id</li>
+                                <li><strong>Inicio:</strong> $fecha_inicio</li>
+                                <li><strong>Entrega:</strong> $fecha_fin</li>
+                            </ul>
+                            <p>Te notificaremos cuando el administrador revise tu solicitud.</p>
+                        </body></html>";
+                        enviarCorreoNotificacion($user_email, $user_nombre, $asunto, $cuerpo);
+                    }
+                    
+                    setFlash('success', "¡Solicitud enviada! El administrador la revisará pronto.");
+                    header("Location: historial.php"); 
+                    exit();
+                } else {
+                    setFlash('error', "Error en la base de datos: " . $conn->error);
+                }
+                $stmt->close();
             }
-            $stmt->close();
         }
     }
 }
@@ -101,19 +101,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['solicitar'])) {
     </style>
 </head>
 <body class="bg-light">
-    <?php include '../includes/navbar.php'; // Usamos el Navbar global ?>
+    <?php include '../includes/navbar.php'; ?>
     
     <div class="container py-5">
         <h2 class="fw-bold mb-4"><i class="fas fa-calendar-plus text-primary"></i> Nueva Solicitud</h2>
 
-        <?php showFlash(); // Aquí se mostrarán los errores o éxitos automáticamente ?>
+        <?php showFlash(); ?>
 
         <div class="row g-4">
             <div class="col-lg-6">
                 <div class="card border-0 shadow-sm rounded-4">
                     <div class="card-body p-4">
                         <form method="POST" id="formSolicitud">
-                            <input type="hidden" name="equipo_id" id="equipo_id" required>
+                            <input type="hidden" name="equipo_id" id="equipo_id" value="<?php echo $equipo_preseleccionado > 0 ? $equipo_preseleccionado : ''; ?>" required>
                             
                             <div id="infoSeleccion" class="mb-4">
                                 <div class="alert alert-info py-3 border-0 rounded-3">
@@ -160,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['solicitar'])) {
                                 echo "<div class='category-header mb-2'><i class='fas fa-tag me-2 opacity-50'></i>" . htmlspecialchars($current_cat) . "</div>";
                             endif;
                     ?>
-                    <div class="card equipo-card border-0 shadow-sm mb-2" 
+                    <div class="card equipo-card border-0 shadow-sm mb-2 <?php echo ($equipo_preseleccionado == $equipo['id']) ? 'selected' : ''; ?>" 
                          data-id="<?php echo $equipo['id']; ?>" 
                          data-nombre="<?php echo htmlspecialchars($equipo['nombre']); ?>">
                         <div class="card-body d-flex align-items-center p-2">
@@ -209,13 +209,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['solicitar'])) {
             card.addEventListener('click', () => seleccionar(card));
         });
 
-        // Configuración de fechas mínimas
         window.addEventListener('load', () => {
+            // Configuración de fechas mínimas
             const now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             const nowStr = now.toISOString().slice(0,16);
             document.getElementById('fecha_inicio').min = nowStr;
             document.getElementById('fecha_fin').min = nowStr;
+
+            // Auto-seleccionar si viene equipo_id por URL
+            const preSelected = document.querySelector('.equipo-card.selected');
+            if (preSelected) seleccionar(preSelected);
         });
     </script>
 </body>

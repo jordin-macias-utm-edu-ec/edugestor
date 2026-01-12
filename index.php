@@ -1,21 +1,23 @@
 <?php
-// user/index.php o /index.php
 require_once 'includes/init.php';
 
-redirectIfLoggedIn();
+// Si ya está logueado, mandarlo a su panel
+if (isset($_SESSION['user_id'])) {
+    if ($_SESSION['user_rol'] == 'admin') {
+        header('Location: admin/index.php');
+    } else {
+        header('Location: user/dashboard.php');
+    }
+    exit();
+}
 
 $error = '';
 $success_message = '';
 
-// Lógica original de mensajes de éxito
 if (isset($_GET['registro']) && $_GET['registro'] == 'exitoso') {
-    $success_message = '¡Registro exitoso! Ahora puedes iniciar sesión.';
-} elseif (isset($_SESSION['registro_exitoso']) && $_SESSION['registro_exitoso']) {
-    unset($_SESSION['registro_exitoso']);
     $success_message = '¡Registro exitoso! Ahora puedes iniciar sesión.';
 }
 
-// Lógica original de autenticación
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
@@ -28,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
         exit();
     } else {
-        $error = 'Credenciales incorrectas. Intenta nuevamente.';
+        $error = 'Credenciales incorrectas.';
     }
 }
 ?>

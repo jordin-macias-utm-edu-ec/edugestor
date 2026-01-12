@@ -1,6 +1,6 @@
 <?php
 // user/dashboard.php
-require_once '../includes/init.php'; 
+require_once '../includes/init.php'; // El ../ es vital aquí
 redirectIfNotLoggedIn();
 
 $conn = getConnection();
@@ -10,18 +10,7 @@ $user_nombre = $_SESSION['user_nombre'];
 /**
  * Función auxiliar para obtener el icono y color según categoría
  */
-function getCategoryStyle($categoria) {
-    switch ($categoria) {
-        case 'Tecnología':
-            return ['icon' => 'fa-laptop', 'color' => 'text-primary', 'bg' => 'bg-primary-subtle'];
-        case 'Laboratorio':
-            return ['icon' => 'fa-flask', 'color' => 'text-success', 'bg' => 'bg-success-subtle'];
-        case 'Espacios':
-            return ['icon' => 'fa-building', 'color' => 'text-info', 'bg' => 'bg-info-subtle'];
-        default:
-            return ['icon' => 'fa-box', 'color' => 'text-secondary', 'bg' => 'bg-light'];
-    }
-}
+
 ?>
 <!DOCTYPE html>
 <html lang="es">

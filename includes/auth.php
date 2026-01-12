@@ -1,9 +1,10 @@
 <?php
-// auth.php
+// includes/auth.php
 
 function redirectIfNotLoggedIn() {
     if (!isset($_SESSION['user_id'])) {
-        header('Location: index.php');
+        // Redirige siempre a la raíz del proyecto usando la URL absoluta
+        header('Location: ' . APP_URL . '/index.php');
         exit();
     }
 }
@@ -11,9 +12,9 @@ function redirectIfNotLoggedIn() {
 function redirectIfLoggedIn() {
     if (isset($_SESSION['user_id'])) {
         if ($_SESSION['user_rol'] == 'admin') {
-            header('Location: admin/index.php');
+            header('Location: ' . APP_URL . '/admin/index.php');
         } else {
-            header('Location: user/dashboard.php');
+            header('Location: ' . APP_URL . '/user/dashboard.php');
         }
         exit();
     }
@@ -28,7 +29,7 @@ function hashPassword($password) {
 }
 
 function authenticate($email, $password) {
-    require_once 'database.php';
+    // Ya no necesitamos require_once aquí porque init.php lo carga todo
     $conn = getConnection();
     
     $stmt = $conn->prepare("SELECT id, email, password, nombre, rol FROM usuarios WHERE email = ?");
@@ -43,13 +44,11 @@ function authenticate($email, $password) {
             $_SESSION['user_nombre'] = $row['nombre'];
             $_SESSION['user_rol'] = $row['rol'];
             $stmt->close();
-            $conn->close();
             return true;
         }
     }
     
     $stmt->close();
-    $conn->close();
     return false;
 }
 ?>
